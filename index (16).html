@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Element Lab</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(16, 24, 48, 0.9);
+      --panel-2: rgba(22, 33, 64, 0.95);
+      --text: #e5eefc;
+      --muted: #8fa4cf;
+      --accent: #5eead4;
+      --accent-2: #60a5fa;
+      --danger: #fb7185;
+      --shadow: 0 18px 40px rgba(0,0,0,0.35);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(96,165,250,0.18), transparent 34%),
+        radial-gradient(circle at 85% 20%, rgba(94,234,212,0.12), transparent 20%),
+        linear-gradient(180deg, #0c1328 0%, #080b16 100%);
+    }
+
+    .app {
+      width: min(1400px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 18px 0 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw, 2.2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .title-block p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      max-width: 720px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      font-size: 0.92rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .sidebar {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+    }
+
+    .section p, .stat-label, .hint {
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 0;
+      font-size: 0.93rem;
+    }
+
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .swatch-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      text-align: left;
+    }
+
+    .swatch-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.18);
+    }
+
+    .swatch-btn.active {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(94,234,212,0.14) inset;
+      background: rgba(94,234,212,0.07);
+    }
+
+    .swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.15);
+      flex: 0 0 auto;
+    }
+
+    .swatch-info {
+      min-width: 0;
+    }
+
+    .swatch-name {
+      font-weight: 600;
+      font-size: 0.94rem;
+    }
+
+    .swatch-desc {
+      color: var(--muted);
+      font-size: 0.76rem;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(96,165,250,0.15), rgba(96,165,250,0.08));
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, border-color 120ms ease;
+      font-weight: 600;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .btn.secondary {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .btn.danger {
+      background: linear-gradient(180deg, rgba(251,113,133,0.18), rgba(251,113,133,0.08));
+    }
+
+    .slider-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .slider-row strong {
+      font-size: 0.95rem;
+    }
+
+    .slider-value {
+      color: var(--accent);
+      font-weight: 700;
+      min-width: 2ch;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-2);
+      cursor: pointer;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .stat-value {
+      margin-top: 6px;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .canvas-panel {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .canvas-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      background: linear-gradient(180deg, rgba(4,8,20,0.96), rgba(2,4,12,0.96));
+      border-radius: 18px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border-radius: 12px;
+      background: #070b16;
+      cursor: crosshair;
+      touch-action: none;
+      user-select: none;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .footer-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 0 4px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      color: #c2e8ff;
+    }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { order: 2; }
+      .canvas-panel { order: 1; }
+    }
+
+    @media (max-width: 580px) {
+      .palette, .control-grid, .stats { grid-template-columns: 1fr; }
+      .app { width: min(100vw - 12px, 1400px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title-block">
+        <h1>Element Lab</h1>
+        <p>A browser-based falling-sand sandbox inspired by games like Sandboxels. Paint materials, mix reactions, and watch the world evolve in real time.</p>
+      </div>
+      <div class="pill" id="statusPill">Running simulation</div>
+    </div>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <section class="section">
+          <h2>Elements</h2>
+          <div id="palette" class="palette"></div>
+        </section>
+
+        <section class="section">
+          <h2>Brush & speed</h2>
+          <div class="slider-row">
+            <strong>Brush size</strong>
+            <span class="slider-value" id="brushValue">4</span>
+          </div>
+          <input id="brushSlider" type="range" min="1" max="12" step="1" value="4" />
+          <div style="height: 14px"></div>
+          <div class="slider-row">
+            <strong>Simulation speed</strong>
+            <span class="slider-value" id="speedValue">2</span>
+          </div>
+          <input id="speedSlider" type="range" min="1" max="5" step="1" value="2" />
+          <p class="hint" style="margin-top: 12px;">Tip: Hold the pointer down and drag to paint. Right-click paints with the eraser.</p>
+        </section>
+
+        <section class="section">
+          <h2>World controls</h2>
+          <div class="control-grid">
+            <button class="btn" id="toggleBtn">Pause</button>
+            <button class="btn secondary" id="stepBtn">Single step</button>
+            <button class="btn secondary" id="fillFloorBtn">Floor</button>
+            <button class="btn danger" id="clearBtn">Clear</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Stats</h2>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">Particles</div>
+              <div class="stat-value" id="particleCount">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Frames / sec</div>
+              <div class="stat-value" id="fpsCount">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Active tool</div>
+              <div class="stat-value" id="activeToolLabel">Sand</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">World size</div>
+              <div class="stat-value" id="worldSizeLabel">180×110</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Keyboard shortcuts</h2>
+          <p class="hint">
+            <code>1</code> Sand · <code>2</code> Water · <code>3</code> Stone · <code>4</code> Wood · <code>5</code> Fire · <code>6</code> Plant · <code>7</code> Oil · <code>0</code> Eraser<br />
+            <code>Space</code> Pause / resume · <code>C</code> Clear
+          </p>
+        </section>
+      </aside>
+
+      <main class="panel canvas-panel">
+        <div class="canvas-head">
+          <div class="legend">
+            <span class="legend-chip"><span class="dot" style="background:#e3c56a"></span> Sand sinks</span>
+            <span class="legend-chip"><span class="dot" style="background:#4ea8ff"></span> Water flows</span>
+            <span class="legend-chip"><span class="dot" style="background:#ff8d4d"></span> Fire spreads</span>
+            <span class="legend-chip"><span class="dot" style="background:#4ade80"></span> Plants grow near water</span>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="world" width="180" height="110" aria-label="simulation canvas"></canvas>
+        </div>
+        <div class="footer-note">
+          <span>Paint combinations to discover interactions: fire burns wood and oil, water can extinguish flames, and plants spread where moisture reaches.</span>
+          <span>Built as a lightweight single-file prototype for easy editing.</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const WORLD_W = 180;
+    const WORLD_H = 110;
+    const CELL_SIZE = 4;
+
+    const canvas = document.getElementById('world');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const paletteEl = document.getElementById('palette');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const stepBtn = document.getElementById('stepBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const fillFloorBtn = document.getElementById('fillFloorBtn');
+    const brushSlider = document.getElementById('brushSlider');
+    const speedSlider = document.getElementById('speedSlider');
+    const brushValueEl = document.getElementById('brushValue');
+    const speedValueEl = document.getElementById('speedValue');
+    const particleCountEl = document.getElementById('particleCount');
+    const fpsCountEl = document.getElementById('fpsCount');
+    const activeToolLabel = document.getElementById('activeToolLabel');
+    const worldSizeLabel = document.getElementById('worldSizeLabel');
+    const statusPill = document.getElementById('statusPill');
+
+    canvas.width = WORLD_W;
+    canvas.height = WORLD_H;
+    worldSizeLabel.textContent = `${WORLD_W}×${WORLD_H}`;
+
+    const TYPES = {
+      EMPTY: 0,
+      STONE: 1,
+      SAND: 2,
+      WATER: 3,
+      WOOD: 4,
+      FIRE: 5,
+      SMOKE: 6,
+      PLANT: 7,
+      OIL: 8,
+    };
+
+    const ELEMENTS = [
+      { id: TYPES.EMPTY, key: '0', name: 'Eraser', desc: 'Remove particles', color: '#0f172a' },
+      { id: TYPES.SAND, key: '1', name: 'Sand', desc: 'Falls and piles up', color: '#e3c56a' },
+      { id: TYPES.WATER, key: '2', name: 'Water', desc: 'Flows and extinguishes', color: '#4ea8ff' },
+      { id: TYPES.STONE, key: '3', name: 'Stone', desc: 'Solid wall', color: '#7c8590' },
+      { id: TYPES.WOOD, key: '4', name: 'Wood', desc: 'Burns slowly', color: '#8b5e3c' },
+      { id: TYPES.FIRE, key: '5', name: 'Fire', desc: 'Ignites fuel', color: '#ff8d4d' },
+      { id: TYPES.PLANT, key: '6', name: 'Plant', desc: 'Grows near water', color: '#4ade80' },
+      { id: TYPES.OIL, key: '7', name: 'Oil', desc: 'Sticky and flammable', color: '#6f5b95' },
+    ];
+
+    const CAN_BURN = new Set([TYPES.WOOD, TYPES.PLANT, TYPES.OIL]);
+    const PASSABLE_FOR_SAND = new Set([TYPES.EMPTY, TYPES.WATER, TYPES.SMOKE, TYPES.OIL]);
+    const PASSABLE_FOR_WATER = new Set([TYPES.EMPTY, TYPES.SMOKE]);
+    const PASSABLE_FOR_OIL = new Set([TYPES.EMPTY, TYPES.SMOKE]);
+
+    const grid = new Uint8Array(WORLD_W * WORLD_H);
+    const aux = new Uint16Array(WORLD_W * WORLD_H);
+    const updated = new Uint8Array(WORLD_W * WORLD_H);
+    const imageData = ctx.createImageData(WORLD_W, WORLD_H);
+
+    let currentTool = TYPES.SAND;
+    let brushSize = Number(brushSlider.value);
+    let speed = Number(speedSlider.value);
+    let running = true;
+    let painting = false;
+    let eraseMode = false;
+    let pointerInside = false;
+    let lastPaintCell = null;
+    let lastFrameTime = performance.now();
+    let fpsTimer = performance.now();
+    let fpsFrames = 0;
+    let currentFps = 0;
+
+    const colorCache = new Map();
+
+    function clamp(value, min, max) {
+      return value < min ? min : value > max ? max : value;
+    }
+
+    function index(x, y) {
+      return x + y * WORLD_W;
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && y >= 0 && x < WORLD_W && y < WORLD_H;
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace('#', '');
+      const value = parseInt(clean, 16);
+      return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255,
+      };
+    }
+
+    function varyColor(hex, seed) {
+      const key = `${hex}:${seed}`;
+      if (colorCache.has(key)) return colorCache.get(key);
+      const { r, g, b } = hexToRgb(hex);
+      const jitter = ((seed * 29) % 17) - 8;
+      const rgb = [
+        clamp(r + jitter, 0, 255),
+        clamp(g + Math.floor(jitter * 0.8), 0, 255),
+        clamp(b + Math.floor(jitter * 0.55), 0, 255),
+      ];
+      colorCache.set(key, rgb);
+      return rgb;
+    }
+
+    function randomChoice(a, b) {
+      return Math.random() < 0.5 ? a : b;
+    }
+
+    function setCell(x, y, type, meta = 0) {
+      if (!inBounds(x, y)) return;
+      const i = index(x, y);
+      grid[i] = type;
+      aux[i] = meta;
+    }
+
+    function moveCell(from, to) {
+      grid[to] = grid[from];
+      aux[to] = aux[from];
+      grid[from] = TYPES.EMPTY;
+      aux[from] = 0;
+      updated[to] = 1;
+    }
+
+    function swapCells(a, b) {
+      const typeA = grid[a];
+      const typeB = grid[b];
+      const auxA = aux[a];
+      const auxB = aux[b];
+      grid[a] = typeB;
+      aux[a] = auxB;
+      grid[b] = typeA;
+      aux[b] = auxA;
+      updated[a] = 1;
+      updated[b] = 1;
+    }
+
+    function tryIgnite(x, y, chance = 0.12) {
+      if (!inBounds(x, y)) return false;
+      const i = index(x, y);
+      const type = grid[i];
+      if (!CAN_BURN.has(type)) return false;
+      if (Math.random() < chance) {
+        grid[i] = TYPES.FIRE;
+        aux[i] = type === TYPES.OIL ? 4 : 0;
+        updated[i] = 1;
+        return true;
+      }
+      return false;
+    }
+
+    function simulateSand(i, x, y) {
+      const downY = y + 1;
+      if (downY >= WORLD_H) return;
+      const below = index(x, downY);
+      const belowType = grid[below];
+      if (PASSABLE_FOR_SAND.has(belowType)) {
+        if (belowType === TYPES.EMPTY || belowType === TYPES.SMOKE) moveCell(i, below);
+        else swapCells(i, below);
+        return;
+      }
+
+      const leftFirst = Math.random() < 0.5;
+      const dirA = leftFirst ? -1 : 1;
+      const dirB = -dirA;
+      for (const dir of [dirA, dirB]) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const targetType = grid[ni];
+        if (PASSABLE_FOR_SAND.has(targetType)) {
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE) moveCell(i, ni);
+          else swapCells(i, ni);
+          return;
+        }
+      }
+    }
+
+    function simulateWater(i, x, y) {
+      if (y + 1 < WORLD_H) {
+        const below = index(x, y + 1);
+        const belowType = grid[below];
+        if (PASSABLE_FOR_WATER.has(belowType)) {
+          moveCell(i, below);
+          return;
+        }
+        if (belowType === TYPES.OIL) {
+          swapCells(i, below);
+          return;
+        }
+      }
+
+      const dirs = Math.random() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        if (PASSABLE_FOR_WATER.has(grid[ni])) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+
+      const spread = Math.random() < 0.85 ? 3 : 5;
+      for (const dir of dirs) {
+        for (let step = 1; step <= spread; step++) {
+          const nx = x + dir * step;
+          if (!inBounds(nx, y)) break;
+          const ni = index(nx, y);
+          const type = grid[ni];
+          if (type === TYPES.EMPTY || type === TYPES.SMOKE) {
+            moveCell(i, ni);
+            return;
+          }
+          if (type !== TYPES.WATER) break;
+        }
+      }
+    }
+
+    function simulateOil(i, x, y) {
+      if (y + 1 < WORLD_H) {
+        const below = index(x, y + 1);
+        const belowType = grid[below];
+        if (PASSABLE_FOR_OIL.has(belowType)) {
+          moveCell(i, below);
+          return;
+        }
+      }
+
+      const dirs = Math.random() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        if (PASSABLE_FOR_OIL.has(grid[ni])) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+
+      for (const dir of dirs) {
+        for (let step = 1; step <= 2; step++) {
+          const nx = x + dir * step;
+          if (!inBounds(nx, y)) break;
+          const ni = index(nx, y);
+          const type = grid[ni];
+          if (type === TYPES.EMPTY || type === TYPES.SMOKE) {
+            moveCell(i, ni);
+            return;
+          }
+          if (type !== TYPES.OIL) break;
+        }
+      }
+    }
+
+    function simulateFire(i, x, y) {
+      aux[i] += 1;
+
+      const adjacent = [
+        [0, -1], [1, 0], [0, 1], [-1, 0],
+        [1, -1], [1, 1], [-1, 1], [-1, -1],
+      ];
+
+      for (const [dx, dy] of adjacent) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const neighbor = grid[ni];
+
+        if (neighbor === TYPES.WATER && Math.random() < 0.4) {
+          grid[i] = TYPES.SMOKE;
+          aux[i] = 0;
+          updated[i] = 1;
+          return;
+        }
+
+        if (neighbor === TYPES.PLANT) tryIgnite(nx, ny, 0.22);
+        if (neighbor === TYPES.WOOD) tryIgnite(nx, ny, 0.1);
+        if (neighbor === TYPES.OIL) tryIgnite(nx, ny, 0.34);
+      }
+
+      if (y > 0) {
+        const above = index(x, y - 1);
+        if (grid[above] === TYPES.EMPTY && Math.random() < 0.18) {
+          grid[above] = TYPES.SMOKE;
+          aux[above] = 0;
+          updated[above] = 1;
+        }
+      }
+
+      const maxLife = 18 + Math.floor(Math.random() * 10);
+      if (aux[i] > maxLife) {
+        grid[i] = Math.random() < 0.75 ? TYPES.SMOKE : TYPES.EMPTY;
+        aux[i] = 0;
+        updated[i] = 1;
+      }
+    }
+
+    function simulateSmoke(i, x, y) {
+      aux[i] += 1;
+      if (aux[i] > 50 + Math.random() * 25) {
+        grid[i] = TYPES.EMPTY;
+        aux[i] = 0;
+        updated[i] = 1;
+        return;
+      }
+
+      const up = y - 1;
+      if (up >= 0) {
+        const above = index(x, up);
+        if (grid[above] === TYPES.EMPTY && Math.random() < 0.72) {
+          moveCell(i, above);
+          return;
+        }
+      }
+
+      const dirs = Math.random() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y - 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        if (grid[ni] === TYPES.EMPTY) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+
+      for (const dir of dirs) {
+        const nx = x + dir;
+        if (!inBounds(nx, y)) continue;
+        const ni = index(nx, y);
+        if (grid[ni] === TYPES.EMPTY && Math.random() < 0.3) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+    }
+
+    function simulatePlant(i, x, y) {
+      let nearWater = false;
+      for (let dy = -1; dy <= 1 && !nearWater; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (!inBounds(nx, ny)) continue;
+          if (grid[index(nx, ny)] === TYPES.WATER) {
+            nearWater = true;
+            break;
+          }
+        }
+      }
+
+      if (!nearWater || Math.random() > 0.03) return;
+
+      const growthSpots = [];
+      for (const [dx, dy] of [[0, -1], [1, 0], [-1, 0], [0, 1], [1, -1], [-1, -1]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        if (grid[ni] === TYPES.EMPTY) growthSpots.push(ni);
+      }
+
+      if (growthSpots.length) {
+        const ni = growthSpots[(Math.random() * growthSpots.length) | 0];
+        grid[ni] = TYPES.PLANT;
+        aux[ni] = 0;
+        updated[ni] = 1;
+      }
+    }
+
+    function stepSimulation() {
+      updated.fill(0);
+
+      for (let y = WORLD_H - 1; y >= 0; y--) {
+        const leftToRight = Math.random() < 0.5;
+        if (leftToRight) {
+          for (let x = 0; x < WORLD_W; x++) {
+            const i = index(x, y);
+            if (updated[i]) continue;
+            const type = grid[i];
+            if (type === TYPES.EMPTY || type === TYPES.STONE || type === TYPES.WOOD) continue;
+            updated[i] = 1;
+            if (type === TYPES.SAND) simulateSand(i, x, y);
+            else if (type === TYPES.WATER) simulateWater(i, x, y);
+            else if (type === TYPES.FIRE) simulateFire(i, x, y);
+            else if (type === TYPES.SMOKE) simulateSmoke(i, x, y);
+            else if (type === TYPES.PLANT) simulatePlant(i, x, y);
+            else if (type === TYPES.OIL) simulateOil(i, x, y);
+          }
+        } else {
+          for (let x = WORLD_W - 1; x >= 0; x--) {
+            const i = index(x, y);
+            if (updated[i]) continue;
+            const type = grid[i];
+            if (type === TYPES.EMPTY || type === TYPES.STONE || type === TYPES.WOOD) continue;
+            updated[i] = 1;
+            if (type === TYPES.SAND) simulateSand(i, x, y);
+            else if (type === TYPES.WATER) simulateWater(i, x, y);
+            else if (type === TYPES.FIRE) simulateFire(i, x, y);
+            else if (type === TYPES.SMOKE) simulateSmoke(i, x, y);
+            else if (type === TYPES.PLANT) simulatePlant(i, x, y);
+            else if (type === TYPES.OIL) simulateOil(i, x, y);
+          }
+        }
+      }
+    }
+
+    function render() {
+      const data = imageData.data;
+      let particles = 0;
+      for (let i = 0; i < grid.length; i++) {
+        const type = grid[i];
+        const offset = i * 4;
+        let color;
+
+        if (type === TYPES.EMPTY) {
+          const shade = 8 + ((i * 13) % 10);
+          data[offset] = shade;
+          data[offset + 1] = shade + 5;
+          data[offset + 2] = shade + 16;
+          data[offset + 3] = 255;
+          continue;
+        }
+
+        particles++;
+        switch (type) {
+          case TYPES.STONE:
+            color = varyColor('#7c8590', i);
+            break;
+          case TYPES.SAND:
+            color = varyColor('#e3c56a', i);
+            break;
+          case TYPES.WATER:
+            color = varyColor('#4ea8ff', i + aux[i]);
+            break;
+          case TYPES.WOOD:
+            color = varyColor('#8b5e3c', i);
+            break;
+          case TYPES.FIRE:
+            color = Math.random() < 0.5 ? [255, 146 + ((i * 9) % 70), 67] : [255, 197, 92];
+            break;
+          case TYPES.SMOKE:
+            color = varyColor('#b0b7c4', i + aux[i]);
+            break;
+          case TYPES.PLANT:
+            color = varyColor('#4ade80', i);
+            break;
+          case TYPES.OIL:
+            color = varyColor('#6f5b95', i + aux[i]);
+            break;
+          default:
+            color = [255, 0, 255];
+        }
+
+        data[offset] = color[0];
+        data[offset + 1] = color[1];
+        data[offset + 2] = color[2];
+        data[offset + 3] = 255;
+      }
+
+      particleCountEl.textContent = particles.toLocaleString();
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function drawCircle(cx, cy, radius, type) {
+      const r2 = radius * radius;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (dx * dx + dy * dy > r2) continue;
+          const x = cx + dx;
+          const y = cy + dy;
+          if (!inBounds(x, y)) continue;
+          const i = index(x, y);
+          grid[i] = type;
+          aux[i] = 0;
+        }
+      }
+    }
+
+    function drawLine(x0, y0, x1, y1, radius, type) {
+      const dx = Math.abs(x1 - x0);
+      const dy = Math.abs(y1 - y0);
+      const sx = x0 < x1 ? 1 : -1;
+      const sy = y0 < y1 ? 1 : -1;
+      let err = dx - dy;
+      let x = x0;
+      let y = y0;
+
+      while (true) {
+        drawCircle(x, y, radius, type);
+        if (x === x1 && y === y1) break;
+        const e2 = err * 2;
+        if (e2 > -dy) {
+          err -= dy;
+          x += sx;
+        }
+        if (e2 < dx) {
+          err += dx;
+          y += sy;
+        }
+      }
+    }
+
+    function canvasToCell(event) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(((event.clientX - rect.left) / rect.width) * WORLD_W);
+      const y = Math.floor(((event.clientY - rect.top) / rect.height) * WORLD_H);
+      return {
+        x: clamp(x, 0, WORLD_W - 1),
+        y: clamp(y, 0, WORLD_H - 1),
+      };
+    }
+
+    function paintAt(event) {
+      const { x, y } = canvasToCell(event);
+      const paintType = eraseMode ? TYPES.EMPTY : currentTool;
+      const radius = Math.max(0, brushSize - 1);
+      if (!lastPaintCell) {
+        drawCircle(x, y, radius, paintType);
+      } else {
+        drawLine(lastPaintCell.x, lastPaintCell.y, x, y, radius, paintType);
+      }
+      lastPaintCell = { x, y };
+    }
+
+    function setRunning(next) {
+      running = next;
+      toggleBtn.textContent = running ? 'Pause' : 'Resume';
+      statusPill.textContent = running ? 'Running simulation' : 'Simulation paused';
+    }
+
+    function setTool(type) {
+      currentTool = type;
+      const element = ELEMENTS.find((item) => item.id === type) || ELEMENTS[1];
+      activeToolLabel.textContent = element.name;
+      document.querySelectorAll('.swatch-btn').forEach((button) => {
+        button.classList.toggle('active', Number(button.dataset.type) === type);
+      });
+    }
+
+    function seedDemoScene() {
+      grid.fill(TYPES.EMPTY);
+      aux.fill(0);
+
+      for (let x = 0; x < WORLD_W; x++) {
+        setCell(x, WORLD_H - 1, TYPES.STONE);
+      }
+      for (let x = 20; x < 76; x++) setCell(x, 18, TYPES.SAND);
+      for (let x = 92; x < 145; x++) setCell(x, 16, TYPES.WATER);
+      for (let x = 48; x < 130; x++) setCell(x, 82, TYPES.STONE);
+      for (let y = 66; y < 82; y++) setCell(62, y, TYPES.STONE);
+      for (let x = 66; x < 94; x++) setCell(x, 64, TYPES.WOOD);
+      for (let x = 112; x < 152; x++) setCell(x, 58, TYPES.PLANT);
+      for (let x = 118; x < 150; x++) setCell(x, 59, TYPES.PLANT);
+      for (let x = 130; x < 160; x++) setCell(x, 28, TYPES.OIL);
+      setCell(80, 63, TYPES.FIRE);
+      setCell(138, 27, TYPES.FIRE);
+    }
+
+    function clearWorld() {
+      grid.fill(TYPES.EMPTY);
+      aux.fill(0);
+    }
+
+    function addFloor() {
+      for (let x = 0; x < WORLD_W; x++) {
+        setCell(x, WORLD_H - 1, TYPES.STONE);
+      }
+    }
+
+    function updateFromControls() {
+      brushSize = Number(brushSlider.value);
+      speed = Number(speedSlider.value);
+      brushValueEl.textContent = String(brushSize);
+      speedValueEl.textContent = String(speed);
+    }
+
+    function buildPalette() {
+      paletteEl.innerHTML = '';
+      ELEMENTS.forEach((element) => {
+        const button = document.createElement('button');
+        button.className = 'swatch-btn';
+        button.type = 'button';
+        button.dataset.type = String(element.id);
+        button.innerHTML = `
+          <span class="swatch" style="background:${element.color}"></span>
+          <span class="swatch-info">
+            <div class="swatch-name">${element.name}</div>
+            <div class="swatch-desc">${element.desc}</div>
+          </span>
+        `;
+        button.addEventListener('click', () => setTool(element.id));
+        paletteEl.appendChild(button);
+      });
+      setTool(currentTool);
+    }
+
+    canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+    canvas.addEventListener('pointerdown', (event) => {
+      pointerInside = true;
+      painting = true;
+      eraseMode = event.button === 2 || event.ctrlKey;
+      lastPaintCell = null;
+      canvas.setPointerCapture(event.pointerId);
+      paintAt(event);
+    });
+
+    canvas.addEventListener('pointermove', (event) => {
+      pointerInside = true;
+      if (painting) paintAt(event);
+    });
+
+    canvas.addEventListener('pointerup', () => {
+      painting = false;
+      eraseMode = false;
+      lastPaintCell = null;
+    });
+
+    canvas.addEventListener('pointerleave', () => {
+      pointerInside = false;
+      if (!painting) lastPaintCell = null;
+    });
+
+    brushSlider.addEventListener('input', updateFromControls);
+    speedSlider.addEventListener('input', updateFromControls);
+
+    toggleBtn.addEventListener('click', () => setRunning(!running));
+    stepBtn.addEventListener('click', () => {
+      stepSimulation();
+      render();
+    });
+    clearBtn.addEventListener('click', () => {
+      clearWorld();
+      addFloor();
+      render();
+    });
+    fillFloorBtn.addEventListener('click', () => {
+      addFloor();
+      render();
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat) return;
+      const key = event.key.toLowerCase();
+      if (key === ' ') {
+        event.preventDefault();
+        setRunning(!running);
+        return;
+      }
+      if (key === 'c') {
+        clearWorld();
+        addFloor();
+        render();
+        return;
+      }
+      const chosen = ELEMENTS.find((item) => item.key === key);
+      if (chosen) setTool(chosen.id);
+    });
+
+    function animate(now) {
+      const delta = now - lastFrameTime;
+      lastFrameTime = now;
+
+      if (running) {
+        const iterations = speed;
+        for (let i = 0; i < iterations; i++) stepSimulation();
+      }
+
+      render();
+
+      fpsFrames++;
+      if (now - fpsTimer >= 500) {
+        currentFps = Math.round((fpsFrames * 1000) / (now - fpsTimer));
+        fpsCountEl.textContent = String(currentFps);
+        fpsFrames = 0;
+        fpsTimer = now;
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    buildPalette();
+    updateFromControls();
+    seedDemoScene();
+    setRunning(true);
+    render();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
