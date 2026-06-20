@@ -646,6 +646,15 @@
       SEED: 14,
       GLASS: 15,
       ASH: 16,
+      SALT: 17,
+      SALT_WATER: 18,
+      MUD: 19,
+      TNT: 20,
+      EXPLOSION: 21,
+      WIRE: 22,
+      SPARK: 23,
+      BATTERY: 24,
+      CLONER: 25,
     };
 
     const CATEGORY_ORDER = ['all', 'powder', 'liquid', 'solid', 'gas', 'life', 'energy', 'tool'];
@@ -678,10 +687,21 @@
       { id: TYPES.GLASS, key: 't', name: 'Glass', category: 'solid', color: '#b6dfff', desc: 'Heat-made solid', reaction: 'Usually formed when sand is exposed to intense lava heat.', temp: AMBIENT_TEMP },
       { id: TYPES.SMOKE, key: 'y', name: 'Smoke', category: 'gas', color: '#a9b2c2', desc: 'Light dirty gas', reaction: 'Rises, spreads, and fades out over time.', temp: 70 },
       { id: TYPES.ASH, key: 'u', name: 'Ash', category: 'powder', color: '#b5a08f', desc: 'Burned residue', reaction: 'Falls like a soft powder and settles after combustion.', temp: 50 },
+      { id: TYPES.SALT, key: 'i', name: 'Salt', category: 'powder', color: '#eef0dc', desc: 'Crystalline powder', reaction: 'Dissolves in water to make salt water.', temp: AMBIENT_TEMP },
+      { id: TYPES.SALT_WATER, key: 'o', name: 'Salt Water', category: 'liquid', color: '#4d86ff', desc: 'Dense mineral-rich liquid', reaction: 'Flows like water, sinks below it, and leaves salt behind when boiled.', temp: AMBIENT_TEMP },
+      { id: TYPES.MUD, key: 'p', name: 'Mud', category: 'powder', color: '#8a6a46', desc: 'Wet heavy sludge', reaction: 'Forms when water soaks sand and dries back into sand when heated.', temp: AMBIENT_TEMP },
+      { id: TYPES.TNT, key: 'a', name: 'TNT', category: 'solid', color: '#d84b49', desc: 'Explosive block', reaction: 'Detonates from heat, fire, sparks, or nearby blasts.', temp: AMBIENT_TEMP },
+      { id: TYPES.EXPLOSION, key: 's', name: 'Explosion', category: 'energy', color: '#ffd15a', desc: 'Instant blast wave', reaction: 'Ignites, shatters, heats, and chain-reacts with TNT.', temp: 700 },
+      { id: TYPES.WIRE, key: 'd', name: 'Wire', category: 'solid', color: '#c88956', desc: 'Carries electricity', reaction: 'Transfers charge from sparks and batteries to nearby wires.', temp: AMBIENT_TEMP },
+      { id: TYPES.SPARK, key: 'f', name: 'Spark', category: 'energy', color: '#fff19d', desc: 'Brief electric pulse', reaction: 'Travels through wire, ignites fuel, and fizzles in liquid.', temp: 300 },
+      { id: TYPES.BATTERY, key: 'g', name: 'Battery', category: 'solid', color: '#7ee18d', desc: 'Power source', reaction: 'Feeds nearby wire and can short-circuit in liquids.', temp: AMBIENT_TEMP },
+      { id: TYPES.CLONER, key: 'h', name: 'Cloner', category: 'tool', color: '#b06bff', desc: 'Copies nearby matter', reaction: 'Locks onto a touching element and slowly duplicates it.', temp: AMBIENT_TEMP },
     ];
 
     const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map((element) => [element.id, element]));
     const BURNABLE = new Set([TYPES.WOOD, TYPES.PLANT, TYPES.OIL, TYPES.SEED, TYPES.ASH]);
+    const WATERISH = new Set([TYPES.WATER, TYPES.SALT_WATER]);
+    const COPY_BLOCKED = new Set([TYPES.EMPTY, TYPES.FIRE, TYPES.SMOKE, TYPES.STEAM, TYPES.SPARK, TYPES.EXPLOSION, TYPES.CLONER]);
 
     const canvas = document.getElementById('world');
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -841,11 +861,11 @@
     }
 
     function isLiquid(type) {
-      return type === TYPES.WATER || type === TYPES.OIL || type === TYPES.ACID || type === TYPES.LAVA;
+      return type === TYPES.WATER || type === TYPES.SALT_WATER || type === TYPES.OIL || type === TYPES.ACID || type === TYPES.LAVA;
     }
 
     function isStaticSolid(type) {
-      return type === TYPES.STONE || type === TYPES.WOOD || type === TYPES.PLANT || type === TYPES.ICE || type === TYPES.METAL || type === TYPES.GLASS;
+      return type === TYPES.STONE || type === TYPES.WOOD || type === TYPES.PLANT || type === TYPES.ICE || type === TYPES.METAL || type === TYPES.GLASS || type === TYPES.TNT || type === TYPES.WIRE || type === TYPES.BATTERY || type === TYPES.CLONER;
     }
 
     function isEmptyish(type) {
@@ -853,11 +873,11 @@
     }
 
     function canPowderMoveInto(type) {
-      return type === TYPES.EMPTY || type === TYPES.SMOKE || type === TYPES.STEAM || type === TYPES.WATER || type === TYPES.OIL || type === TYPES.ACID || type === TYPES.FIRE;
+      return type === TYPES.EMPTY || type === TYPES.SMOKE || type === TYPES.STEAM || type === TYPES.WATER || type === TYPES.SALT_WATER || type === TYPES.OIL || type === TYPES.ACID || type === TYPES.FIRE;
     }
 
     function canLiquidMoveInto(type) {
-      return type === TYPES.EMPTY || type === TYPES.SMOKE || type === TYPES.STEAM || type === TYPES.FIRE;
+      return type === TYPES.EMPTY || type === TYPES.SMOKE || type === TYPES.STEAM || type === TYPES.FIRE || type === TYPES.SPARK;
     }
 
     function canGasMoveInto(type) {
@@ -902,6 +922,20 @@
           callback(index(nx, ny), nx, ny, dx, dy);
         }
       }
+    }
+
+    function forEachOrthogonalNeighbor(x, y, callback) {
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        callback(index(nx, ny), nx, ny, dx, dy);
+      }
+    }
+
+    function chooseRandom(items) {
+      return items[(rand() * items.length) | 0];
     }
 
     function countNeighborsOfType(x, y, targetType) {
@@ -1298,6 +1332,21 @@
         logEvent('Water flashed into steam.');
         return true;
       }
+      if (type === TYPES.SALT_WATER && currentTemp >= 120) {
+        const aboveY = y - 1;
+        if (aboveY >= 0) {
+          const above = index(x, aboveY);
+          if (grid[above] === TYPES.EMPTY) {
+            transformIndex(i, TYPES.SALT, 0, 60);
+            transformIndex(above, TYPES.STEAM, 0, Math.max(130, currentTemp - 15));
+            logEvent('Salt water boiled away and left salt crystals.');
+            return true;
+          }
+        }
+        transformIndex(i, TYPES.STEAM, 0, Math.max(130, currentTemp - 15));
+        logEvent('Salt water boiled into steam.');
+        return true;
+      }
       if (type === TYPES.STEAM && currentTemp <= 85 && rand() < 0.18) {
         transformIndex(i, TYPES.WATER, 0, Math.max(20, currentTemp - 18));
         logEvent('Steam condensed back into water.');
@@ -1313,9 +1362,24 @@
         logEvent('Lava cooled into stone.');
         return true;
       }
-      if (type === TYPES.SAND && currentTemp > 680 && hasNeighborOfType(x, y, [TYPES.LAVA, TYPES.FIRE]) && rand() < 0.06) {
+      if (type === TYPES.SAND && currentTemp > 680 && hasNeighborOfType(x, y, [TYPES.LAVA, TYPES.FIRE, TYPES.EXPLOSION]) && rand() < 0.06) {
         transformIndex(i, TYPES.GLASS, 0, 160);
         logEvent('Sand fused into glass.');
+        return true;
+      }
+      if (type === TYPES.MUD && currentTemp > 140 && rand() < 0.18) {
+        transformIndex(i, TYPES.SAND, 0, 70);
+        logEvent('Mud dried back into sand.');
+        return true;
+      }
+      if (type === TYPES.TNT && (currentTemp > 180 || hasNeighborOfType(x, y, [TYPES.FIRE, TYPES.LAVA, TYPES.SPARK, TYPES.EXPLOSION]))) {
+        transformIndex(i, TYPES.EXPLOSION, 0, 700);
+        logEvent('TNT detonated.');
+        return true;
+      }
+      if (type === TYPES.BATTERY && currentTemp > 240 && rand() < 0.08) {
+        transformIndex(i, TYPES.EXPLOSION, 0, 650);
+        logEvent('An overheated battery burst.');
         return true;
       }
       if ((type === TYPES.WOOD || type === TYPES.PLANT || type === TYPES.SEED || type === TYPES.OIL) && currentTemp > 210 && rand() < 0.15) {
@@ -1372,7 +1436,7 @@
 
     function simulatePlant(i, x, y) {
       conductTemperature(i, 0.12);
-      if (hasNeighborOfType(x, y, [TYPES.FIRE, TYPES.LAVA, TYPES.ACID]) && rand() < 0.1) {
+      if (hasNeighborOfType(x, y, [TYPES.FIRE, TYPES.LAVA, TYPES.ACID, TYPES.SPARK, TYPES.EXPLOSION]) && rand() < 0.1) {
         if (hasNeighborOfType(x, y, [TYPES.ACID])) {
           emptyIndex(i);
           logEvent('Acid dissolved a plant.');
@@ -1391,12 +1455,12 @@
           const belowY = ny + 1;
           if (belowY >= WORLD_H) return;
           const belowType = grid[index(nx, belowY)];
-          if (belowType === TYPES.STONE || belowType === TYPES.SAND || belowType === TYPES.WOOD || belowType === TYPES.PLANT || belowType === TYPES.GLASS) {
+          if (belowType === TYPES.STONE || belowType === TYPES.SAND || belowType === TYPES.WOOD || belowType === TYPES.PLANT || belowType === TYPES.GLASS || belowType === TYPES.MUD) {
             growthTargets.push(ni);
           }
         });
         if (growthTargets.length) {
-          const target = growthTargets[(rand() * growthTargets.length) | 0];
+          const target = chooseRandom(growthTargets);
           transformIndex(target, TYPES.PLANT, 0, 24);
           logEvent('Plants spread toward nearby water.', 800);
         }
@@ -1411,6 +1475,8 @@
         if (grid[ni] === TYPES.WATER && rand() < 0.008 && temp[ni] < 18) {
           transformIndex(ni, TYPES.ICE, 0, -18);
           logEvent('Water froze into ice.');
+        } else if (grid[ni] === TYPES.SALT_WATER) {
+          temp[ni] -= 3;
         } else if (grid[ni] !== TYPES.EMPTY) {
           temp[ni] -= 2;
         }
@@ -1492,12 +1558,12 @@
       if (belowY < WORLD_H) {
         const belowIndex = index(x, belowY);
         const belowType = grid[belowIndex];
-        if (belowType === TYPES.WATER && rand() < 0.08) {
+        if ((belowType === TYPES.WATER || belowType === TYPES.SALT_WATER) && rand() < 0.08) {
           swapCells(i, belowIndex);
           return;
         }
-        const stableGround = belowType === TYPES.STONE || belowType === TYPES.SAND || belowType === TYPES.WOOD || belowType === TYPES.PLANT || belowType === TYPES.GLASS;
-        if (stableGround && hasNeighborOfType(x, y, [TYPES.WATER, TYPES.PLANT]) && rand() < 0.08) {
+        const stableGround = belowType === TYPES.STONE || belowType === TYPES.SAND || belowType === TYPES.WOOD || belowType === TYPES.PLANT || belowType === TYPES.GLASS || belowType === TYPES.MUD;
+        if (stableGround && hasNeighborOfType(x, y, [TYPES.WATER, TYPES.PLANT, TYPES.MUD]) && rand() < 0.08) {
           transformIndex(i, TYPES.PLANT, 0, 25);
           logEvent('A seed rooted into a plant.');
           return;
@@ -1508,8 +1574,10 @@
 
     function simulateWater(i, x, y) {
       conductTemperature(i, 0.14);
+      let reacted = false;
 
       forEachNeighbor(x, y, (ni) => {
+        if (reacted) return;
         const neighborType = grid[ni];
         if (neighborType === TYPES.FIRE && rand() < 0.4) {
           transformIndex(ni, TYPES.SMOKE, 0, 80);
@@ -1518,13 +1586,22 @@
         } else if (neighborType === TYPES.LAVA) {
           transformIndex(i, TYPES.STEAM, 0, 150);
           transformIndex(ni, TYPES.STONE, 0, 180);
+          reacted = true;
           logEvent('Water collided with lava, making steam and stone.');
         } else if (neighborType === TYPES.ICE) {
           addTemp(i, -2);
+        } else if (neighborType === TYPES.SALT && rand() < 0.12) {
+          transformIndex(i, TYPES.SALT_WATER, 0, Math.max(20, temp[i]));
+          emptyIndex(ni);
+          reacted = true;
+          logEvent('Salt dissolved into water.');
+        } else if (neighborType === TYPES.SAND && rand() < 0.015) {
+          transformIndex(ni, TYPES.MUD, 0, 20);
+          logEvent('Water soaked sand into mud.', 800);
         }
       });
 
-      if (grid[i] !== TYPES.WATER) return;
+      if (reacted || grid[i] !== TYPES.WATER) return;
 
       if (y + 1 < WORLD_H) {
         const below = index(x, y + 1);
@@ -1558,11 +1635,11 @@
           if (!inBounds(nx, y)) break;
           const ni = index(nx, y);
           const targetType = grid[ni];
-          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE) {
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) {
             moveCell(i, ni);
             return;
           }
-          if (targetType !== TYPES.WATER) break;
+          if (targetType !== TYPES.WATER && targetType !== TYPES.SALT_WATER) break;
         }
       }
       coolTowardAmbient(i, 1);
@@ -1622,12 +1699,21 @@
           if (dissolveTarget(ni, 0.16, TYPES.EMPTY, 'Acid dissolved organic matter.')) consumed = rand() < 0.08;
         } else if (targetType === TYPES.WOOD) {
           if (dissolveTarget(ni, 0.05, TYPES.EMPTY, 'Acid chewed through wood.')) consumed = rand() < 0.06;
-        } else if (targetType === TYPES.SAND || targetType === TYPES.ASH) {
+        } else if (targetType === TYPES.SAND || targetType === TYPES.ASH || targetType === TYPES.SALT || targetType === TYPES.MUD) {
           if (dissolveTarget(ni, 0.04, TYPES.EMPTY, 'Acid broke down loose material.')) consumed = rand() < 0.05;
         } else if (targetType === TYPES.STONE) {
           if (dissolveTarget(ni, 0.012, TYPES.EMPTY, 'Acid etched away stone.')) consumed = rand() < 0.08;
-        } else if (targetType === TYPES.METAL) {
+        } else if (targetType === TYPES.METAL || targetType === TYPES.WIRE) {
           if (dissolveTarget(ni, 0.006, TYPES.EMPTY, 'Acid corroded metal.')) consumed = rand() < 0.08;
+        } else if (targetType === TYPES.CLONER && rand() < 0.008) {
+          emptyIndex(ni);
+          logEvent('Acid ruined a cloner.');
+        } else if (targetType === TYPES.TNT && rand() < 0.01) {
+          transformIndex(ni, TYPES.EXPLOSION, 0, 650);
+          logEvent('Acid destabilized TNT.');
+        } else if (targetType === TYPES.BATTERY && rand() < 0.015) {
+          transformIndex(ni, TYPES.EXPLOSION, 0, 650);
+          logEvent('Acid ruptured a battery.');
         } else if (targetType === TYPES.FIRE && rand() < 0.06) {
           transformIndex(ni, TYPES.SMOKE, 0, 70);
         }
@@ -1644,7 +1730,7 @@
           moveCell(i, below);
           return;
         }
-        if (belowType === TYPES.WATER || belowType === TYPES.OIL) {
+        if (belowType === TYPES.WATER || belowType === TYPES.SALT_WATER || belowType === TYPES.OIL) {
           swapCells(i, below);
           return;
         }
@@ -1668,7 +1754,7 @@
           if (!inBounds(nx, y)) break;
           const ni = index(nx, y);
           const targetType = grid[ni];
-          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE) {
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) {
             moveCell(i, ni);
             return;
           }
@@ -1683,7 +1769,7 @@
       conductTemperature(i, 0.16);
       forEachNeighbor(x, y, (ni) => {
         const targetType = grid[ni];
-        if (targetType === TYPES.WATER) {
+        if (targetType === TYPES.WATER || targetType === TYPES.SALT_WATER) {
           transformIndex(ni, TYPES.STEAM, 0, 160);
           temp[i] -= 24;
           logEvent('Lava boiled water into steam.');
@@ -1695,6 +1781,12 @@
           transformIndex(ni, TYPES.GLASS, 0, 180);
           temp[i] -= 3;
           logEvent('Lava fused nearby sand into glass.');
+        } else if (targetType === TYPES.MUD && rand() < 0.12) {
+          transformIndex(ni, TYPES.SAND, 0, 90);
+          logEvent('Lava baked mud into sand.');
+        } else if (targetType === TYPES.TNT || targetType === TYPES.BATTERY) {
+          transformIndex(ni, TYPES.EXPLOSION, 0, 700);
+          logEvent('Lava triggered an explosion.');
         } else if ((targetType === TYPES.WOOD || targetType === TYPES.PLANT || targetType === TYPES.SEED || targetType === TYPES.OIL || targetType === TYPES.ASH) && rand() < 0.2) {
           igniteIfPossible(ni, 1);
         } else if (targetType !== TYPES.EMPTY) {
@@ -1705,13 +1797,13 @@
       if (y + 1 < WORLD_H) {
         const below = index(x, y + 1);
         const belowType = grid[below];
-        if (belowType === TYPES.WATER) {
+        if (belowType === TYPES.WATER || belowType === TYPES.SALT_WATER) {
           transformIndex(below, TYPES.STEAM, 0, 180);
           transformIndex(i, TYPES.STONE, 0, 220);
           logEvent('Lava met water and instantly hardened.');
           return;
         }
-        if (belowType === TYPES.EMPTY || belowType === TYPES.SMOKE || belowType === TYPES.STEAM || belowType === TYPES.FIRE || belowType === TYPES.WATER || belowType === TYPES.OIL || belowType === TYPES.ACID) {
+        if (belowType === TYPES.EMPTY || belowType === TYPES.SMOKE || belowType === TYPES.STEAM || belowType === TYPES.FIRE || belowType === TYPES.WATER || belowType === TYPES.SALT_WATER || belowType === TYPES.OIL || belowType === TYPES.ACID || belowType === TYPES.SPARK) {
           moveCell(i, below);
           return;
         }
@@ -1724,7 +1816,7 @@
         if (!inBounds(nx, ny)) continue;
         const ni = index(nx, ny);
         const targetType = grid[ni];
-        if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.WATER || targetType === TYPES.OIL || targetType === TYPES.ACID) {
+        if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.WATER || targetType === TYPES.SALT_WATER || targetType === TYPES.OIL || targetType === TYPES.ACID || targetType === TYPES.SPARK) {
           moveCell(i, ni);
           return;
         }
@@ -1737,7 +1829,7 @@
             if (!inBounds(nx, y)) break;
             const ni = index(nx, y);
             const targetType = grid[ni];
-            if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE) {
+            if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) {
               moveCell(i, ni);
               return;
             }
@@ -1871,6 +1963,389 @@
       }
     }
 
+    function simulateSalt(i, x, y) {
+      conductTemperature(i, 0.1);
+      let dissolved = false;
+      forEachNeighbor(x, y, (ni) => {
+        if (dissolved) return;
+        const neighborType = grid[ni];
+        if (neighborType === TYPES.WATER) {
+          transformIndex(ni, TYPES.SALT_WATER, 0, Math.max(20, temp[ni]));
+          emptyIndex(i);
+          dissolved = true;
+          logEvent('Salt dissolved into water.');
+        } else if (neighborType === TYPES.SALT_WATER && rand() < 0.06) {
+          emptyIndex(i);
+          dissolved = true;
+          logEvent('Salt vanished into an existing salt-water pool.', 800);
+        }
+      });
+      if (dissolved || grid[i] !== TYPES.SALT) return;
+
+      if (y + 1 < WORLD_H) {
+        const below = index(x, y + 1);
+        const belowType = grid[below];
+        if (canPowderMoveInto(belowType)) {
+          if (belowType === TYPES.EMPTY || belowType === TYPES.SMOKE || belowType === TYPES.STEAM || belowType === TYPES.FIRE || belowType === TYPES.SPARK) moveCell(i, below);
+          else swapCells(i, below);
+          return;
+        }
+      }
+
+      const dirs = rand() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const targetType = grid[ni];
+        if (canPowderMoveInto(targetType)) {
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) moveCell(i, ni);
+          else swapCells(i, ni);
+          return;
+        }
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateSaltWater(i, x, y) {
+      conductTemperature(i, 0.13);
+      let reacted = false;
+      forEachNeighbor(x, y, (ni) => {
+        if (reacted) return;
+        const neighborType = grid[ni];
+        if (neighborType === TYPES.FIRE && rand() < 0.38) {
+          transformIndex(ni, TYPES.SMOKE, 0, 80);
+          addTemp(i, 18);
+          logEvent('Salt water extinguished a flame.');
+        } else if (neighborType === TYPES.LAVA) {
+          transformIndex(i, TYPES.STEAM, 0, 150);
+          transformIndex(ni, TYPES.STONE, 0, 180);
+          reacted = true;
+          logEvent('Salt water hit lava and burst into steam.');
+        } else if (neighborType === TYPES.ICE) {
+          addTemp(i, -2);
+        } else if (neighborType === TYPES.SAND && rand() < 0.02) {
+          transformIndex(ni, TYPES.MUD, 0, 20);
+          logEvent('Wet sand turned into mud.', 800);
+        } else if (neighborType === TYPES.SALT && rand() < 0.08) {
+          emptyIndex(ni);
+          logEvent('Salt enriched the salt water.', 800);
+        }
+      });
+
+      if (reacted || grid[i] !== TYPES.SALT_WATER) return;
+
+      if (y + 1 < WORLD_H) {
+        const below = index(x, y + 1);
+        const belowType = grid[below];
+        if (canLiquidMoveInto(belowType)) {
+          moveCell(i, below);
+          return;
+        }
+        if (belowType === TYPES.OIL || belowType === TYPES.WATER || belowType === TYPES.SMOKE || belowType === TYPES.STEAM) {
+          swapCells(i, below);
+          return;
+        }
+      }
+
+      const dirs = rand() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const targetType = grid[ni];
+        if (canLiquidMoveInto(targetType)) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+
+      for (const dir of dirs) {
+        for (let step = 1; step <= 4; step++) {
+          const nx = x + dir * step;
+          if (!inBounds(nx, y)) break;
+          const ni = index(nx, y);
+          const targetType = grid[ni];
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) {
+            moveCell(i, ni);
+            return;
+          }
+          if (targetType !== TYPES.SALT_WATER && targetType !== TYPES.WATER) break;
+        }
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateMud(i, x, y) {
+      conductTemperature(i, 0.11);
+      if (hasNeighborOfType(x, y, [TYPES.WATER, TYPES.SALT_WATER])) addTemp(i, -1);
+
+      if (y + 1 < WORLD_H) {
+        const below = index(x, y + 1);
+        const belowType = grid[below];
+        if (canPowderMoveInto(belowType) && rand() < 0.75) {
+          if (belowType === TYPES.EMPTY || belowType === TYPES.SMOKE || belowType === TYPES.STEAM || belowType === TYPES.FIRE || belowType === TYPES.SPARK) moveCell(i, below);
+          else swapCells(i, below);
+          return;
+        }
+      }
+
+      const dirs = rand() < 0.5 ? [-1, 1] : [1, -1];
+      for (const dir of dirs) {
+        const nx = x + dir;
+        const ny = y + 1;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const targetType = grid[ni];
+        if (canPowderMoveInto(targetType) && rand() < 0.55) {
+          if (targetType === TYPES.EMPTY || targetType === TYPES.SMOKE || targetType === TYPES.STEAM || targetType === TYPES.FIRE || targetType === TYPES.SPARK) moveCell(i, ni);
+          else swapCells(i, ni);
+          return;
+        }
+      }
+
+      if (rand() < 0.08) {
+        for (const dir of dirs) {
+          const nx = x + dir;
+          if (!inBounds(nx, y)) continue;
+          const ni = index(nx, y);
+          if (grid[ni] === TYPES.EMPTY) {
+            moveCell(i, ni);
+            return;
+          }
+        }
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateTNT(i, x, y) {
+      conductTemperature(i, 0.08);
+      if (temp[i] > 180 || hasNeighborOfType(x, y, [TYPES.FIRE, TYPES.LAVA, TYPES.SPARK, TYPES.EXPLOSION])) {
+        transformIndex(i, TYPES.EXPLOSION, 0, 700);
+        logEvent('TNT detonated.');
+        return;
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateExplosion(i, x, y) {
+      aux[i] += 1;
+      temp[i] = Math.max(temp[i], 720);
+      const radius = aux[i] === 1 ? 2 : 1;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          const ny = y + dy;
+          if (!inBounds(nx, ny)) continue;
+          const ni = index(nx, ny);
+          const targetType = grid[ni];
+          if (targetType === TYPES.EMPTY) {
+            if (rand() < 0.25) transformIndex(ni, TYPES.FIRE, 0, 360);
+            else if (rand() < 0.08) transformIndex(ni, TYPES.SMOKE, 0, 90);
+          } else if (targetType === TYPES.WATER || targetType === TYPES.SALT_WATER) {
+            transformIndex(ni, TYPES.STEAM, 0, 170);
+          } else if (targetType === TYPES.ICE) {
+            transformIndex(ni, TYPES.WATER, 0, 55);
+          } else if (targetType === TYPES.TNT || targetType === TYPES.BATTERY) {
+            transformIndex(ni, TYPES.EXPLOSION, 0, 700);
+          } else if (targetType === TYPES.WIRE) {
+            aux[ni] = Math.max(aux[ni], 8);
+            temp[ni] += 120;
+            updated[ni] = 1;
+          } else if (targetType === TYPES.SAND && rand() < 0.18) {
+            transformIndex(ni, TYPES.GLASS, 0, 130);
+          } else if (targetType === TYPES.WOOD || targetType === TYPES.PLANT || targetType === TYPES.SEED || targetType === TYPES.OIL || targetType === TYPES.ASH) {
+            igniteIfPossible(ni, 1);
+          } else if (targetType !== TYPES.EXPLOSION) {
+            temp[ni] += 70;
+          }
+        }
+      }
+      logEvent('An explosion blasted through nearby materials.', 500);
+
+      if (aux[i] > 1) {
+        if (rand() < 0.55) transformIndex(i, TYPES.FIRE, 0, 380);
+        else if (rand() < 0.8) transformIndex(i, TYPES.SMOKE, 0, 90);
+        else emptyIndex(i);
+      }
+    }
+
+    function simulateWire(i, x, y) {
+      conductTemperature(i, 0.22);
+      if (aux[i] > 0) aux[i] -= 1;
+
+      forEachOrthogonalNeighbor(x, y, (ni) => {
+        const neighborType = grid[ni];
+        if (neighborType === TYPES.SPARK || neighborType === TYPES.EXPLOSION) {
+          aux[i] = Math.max(aux[i], 8);
+        } else if (neighborType === TYPES.BATTERY && rand() < 0.35) {
+          aux[i] = Math.max(aux[i], 7);
+        } else if (neighborType === TYPES.WIRE && aux[ni] > 2) {
+          aux[i] = Math.max(aux[i], aux[ni] - 1);
+        }
+      });
+
+      if (aux[i] > 0) {
+        temp[i] += 3;
+        forEachOrthogonalNeighbor(x, y, (ni) => {
+          const neighborType = grid[ni];
+          if (neighborType === TYPES.WIRE && aux[ni] < aux[i] - 1) {
+            aux[ni] = Math.max(aux[ni], aux[i] - 1);
+            updated[ni] = 1;
+          } else if (neighborType === TYPES.TNT && rand() < 0.16) {
+            transformIndex(ni, TYPES.EXPLOSION, 0, 700);
+            logEvent('A charged wire set off TNT.');
+          } else if (BURNABLE.has(neighborType) && rand() < 0.03) {
+            igniteIfPossible(ni, 1);
+          }
+        });
+
+        if (hasNeighborOfType(x, y, [TYPES.WATER, TYPES.SALT_WATER]) && rand() < 0.04) {
+          transformIndex(i, TYPES.SPARK, 0, 300);
+          logEvent('A wire short-circuited in liquid.', 700);
+          return;
+        }
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateSpark(i, x, y) {
+      aux[i] += 1;
+      temp[i] = Math.max(temp[i], 300);
+      let discharged = false;
+
+      forEachOrthogonalNeighbor(x, y, (ni) => {
+        if (discharged) return;
+        const neighborType = grid[ni];
+        if (neighborType === TYPES.WIRE) {
+          aux[ni] = Math.max(aux[ni], 8);
+          updated[ni] = 1;
+          discharged = true;
+        } else if (neighborType === TYPES.BATTERY) {
+          aux[ni] = (aux[ni] + 3) % 24;
+          discharged = true;
+        } else if (neighborType === TYPES.TNT) {
+          transformIndex(ni, TYPES.EXPLOSION, 0, 700);
+          discharged = true;
+          logEvent('Spark detonated TNT.');
+        } else if (neighborType === TYPES.WATER || neighborType === TYPES.SALT_WATER) {
+          transformIndex(i, TYPES.SMOKE, 0, 60);
+          if (rand() < 0.25) transformIndex(ni, TYPES.STEAM, 0, 120);
+          discharged = true;
+          logEvent('A spark fizzled in liquid.', 500);
+        } else if (BURNABLE.has(neighborType) && rand() < 0.18) {
+          igniteIfPossible(ni, 1);
+          discharged = true;
+        }
+      });
+
+      if (grid[i] !== TYPES.SPARK) return;
+      if (discharged && aux[i] > 1 && rand() < 0.7) {
+        emptyIndex(i);
+        return;
+      }
+
+      const dirs = rand() < 0.5 ? [[0, -1], [1, 0], [-1, 0], [0, 1]] : [[0, -1], [-1, 0], [1, 0], [0, 1]];
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBounds(nx, ny)) continue;
+        const ni = index(nx, ny);
+        const targetType = grid[ni];
+        if (targetType === TYPES.EMPTY) {
+          moveCell(i, ni);
+          return;
+        }
+      }
+
+      if (aux[i] > 4) {
+        if (rand() < 0.35) transformIndex(i, TYPES.SMOKE, 0, 70);
+        else emptyIndex(i);
+      }
+    }
+
+    function simulateBattery(i, x, y) {
+      aux[i] = (aux[i] + 1) % 24;
+      conductTemperature(i, 0.18);
+      const shorted = hasNeighborOfType(x, y, [TYPES.WATER, TYPES.SALT_WATER, TYPES.ACID]);
+
+      if (shorted && rand() < 0.14) {
+        forEachOrthogonalNeighbor(x, y, (ni) => {
+          const neighborType = grid[ni];
+          if (neighborType === TYPES.WIRE) {
+            aux[ni] = Math.max(aux[ni], 8);
+            updated[ni] = 1;
+          } else if (neighborType === TYPES.EMPTY && rand() < 0.3) {
+            transformIndex(ni, TYPES.SPARK, 0, 300);
+          }
+        });
+        logEvent('A battery short-circuited.', 600);
+      }
+
+      if (hasNeighborOfType(x, y, [TYPES.ACID]) && rand() < 0.04) {
+        transformIndex(i, TYPES.EXPLOSION, 0, 680);
+        logEvent('Acid breached a battery and caused an explosion.');
+        return;
+      }
+
+      if (aux[i] % 5 === 0 || shorted) {
+        forEachOrthogonalNeighbor(x, y, (ni) => {
+          const neighborType = grid[ni];
+          if (neighborType === TYPES.WIRE) {
+            aux[ni] = Math.max(aux[ni], 8);
+            updated[ni] = 1;
+          } else if (neighborType === TYPES.EMPTY && rand() < 0.08) {
+            transformIndex(ni, TYPES.SPARK, 0, 300);
+          } else if (neighborType === TYPES.TNT && rand() < 0.05) {
+            transformIndex(ni, TYPES.EXPLOSION, 0, 700);
+          }
+        });
+      }
+
+      if (temp[i] > 260 && rand() < 0.08) {
+        transformIndex(i, TYPES.EXPLOSION, 0, 680);
+        logEvent('An overheated battery exploded.');
+        return;
+      }
+      coolTowardAmbient(i, 1);
+    }
+
+    function simulateCloner(i, x, y) {
+      conductTemperature(i, 0.06);
+      if (aux[i] === 0) {
+        const candidates = [];
+        forEachOrthogonalNeighbor(x, y, (ni) => {
+          const targetType = grid[ni];
+          if (!COPY_BLOCKED.has(targetType)) candidates.push(targetType);
+        });
+        if (candidates.length) {
+          aux[i] = chooseRandom(candidates);
+          logEvent(`Cloner locked onto ${ELEMENT_BY_ID[aux[i]].name}.`, 900);
+        }
+      } else if (rand() < 0.12) {
+        const openSpots = [];
+        forEachOrthogonalNeighbor(x, y, (ni) => {
+          if (grid[ni] === TYPES.EMPTY) openSpots.push(ni);
+        });
+        if (openSpots.length) {
+          const target = chooseRandom(openSpots);
+          setIndex(target, aux[i], 0, defaultTempFor(aux[i]));
+          updated[target] = 1;
+          if (rand() < 0.08) logEvent(`Cloner produced ${ELEMENT_BY_ID[aux[i]].name}.`, 800);
+        }
+      }
+
+      if (hasNeighborOfType(x, y, [TYPES.ACID]) && rand() < 0.008) {
+        emptyIndex(i);
+        logEvent('A cloner was destroyed by acid.');
+        return;
+      }
+      coolTowardAmbient(i, 1);
+    }
+
     function stepSimulation() {
       updated.fill(0);
       for (let y = WORLD_H - 1; y >= 0; y--) {
@@ -1884,72 +2359,32 @@
             updated[i] = 1;
             if (maybeApplyThermalTransition(i, x, y)) continue;
             switch (type) {
-              case TYPES.STONE:   {
-                simulateStone(i);
-                break;
-              }
-              case TYPES.METAL: {
-                simulateMetal(i, x, y);
-                break;
-              }
-              case TYPES.GLASS: {
-                simulateGlass(i);
-                break;
-              }
-              case TYPES.WOOD: {
-                simulateWood(i, x, y);
-                break;
-              }
-              case TYPES.PLANT: {
-                simulatePlant(i, x, y);
-                break;
-              }
-              case TYPES.ICE: {
-                simulateIce(i, x, y);
-                break;
-              }
-              case TYPES.SAND: {
-                simulateSand(i, x, y);
-                break;
-              }
-              case TYPES.ASH: {
-                simulateAsh(i, x, y);
-                break;
-              }
-              case TYPES.SEED: {
-                simulateSeed(i, x, y);
-                break;
-              }
-              case TYPES.WATER: {
-                simulateWater(i, x, y);
-                break;
-              }
-              case TYPES.OIL: {
-                simulateOil(i, x, y);
-                break;
-              }
-              case TYPES.ACID: {
-                simulateAcid(i, x, y);
-                break;
-              }
-              case TYPES.LAVA: {
-                simulateLava(i, x, y);
-                break;
-              }
-              case TYPES.FIRE: {
-                simulateFire(i, x, y);
-                break;
-              }
-              case TYPES.SMOKE: {
-                simulateSmoke(i, x, y);
-                break;
-              }
-              case TYPES.STEAM: {
-                simulateSteam(i, x, y);
-                break;
-              }
-              default:
-                break;
+              case TYPES.STONE: simulateStone(i); break;
+              case TYPES.METAL: simulateMetal(i, x, y); break;
+              case TYPES.GLASS: simulateGlass(i); break;
+              case TYPES.WOOD: simulateWood(i, x, y); break;
+              case TYPES.PLANT: simulatePlant(i, x, y); break;
+              case TYPES.ICE: simulateIce(i, x, y); break;
+              case TYPES.SAND: simulateSand(i, x, y); break;
+              case TYPES.ASH: simulateAsh(i, x, y); break;
+              case TYPES.SEED: simulateSeed(i, x, y); break;
+              case TYPES.SALT: simulateSalt(i, x, y); break;
+              case TYPES.MUD: simulateMud(i, x, y); break;
+              case TYPES.WATER: simulateWater(i, x, y); break;
+              case TYPES.SALT_WATER: simulateSaltWater(i, x, y); break;
+              case TYPES.OIL: simulateOil(i, x, y); break;
+              case TYPES.ACID: simulateAcid(i, x, y); break;
+              case TYPES.LAVA: simulateLava(i, x, y); break;
+              case TYPES.FIRE: simulateFire(i, x, y); break;
+              case TYPES.SMOKE: simulateSmoke(i, x, y); break;
+              case TYPES.STEAM: simulateSteam(i, x, y); break;
+              case TYPES.TNT: simulateTNT(i, x, y); break;
+              case TYPES.EXPLOSION: simulateExplosion(i, x, y); break;
+              case TYPES.WIRE: simulateWire(i, x, y); break;
+              case TYPES.SPARK: simulateSpark(i, x, y); break;
+              case TYPES.BATTERY: simulateBattery(i, x, y); break;
+              case TYPES.CLONER: simulateCloner(i, x, y); break;
+              default: break;
             }
           }
         } else {
@@ -1961,72 +2396,32 @@
             updated[i] = 1;
             if (maybeApplyThermalTransition(i, x, y)) continue;
             switch (type) {
-              case TYPES.STONE: {
-                simulateStone(i);
-                break;
-              }
-              case TYPES.METAL: {
-                simulateMetal(i, x, y);
-                break;
-              }
-              case TYPES.GLASS: {
-                simulateGlass(i);
-                break;
-              }
-              case TYPES.WOOD: {
-                simulateWood(i, x, y);
-                break;
-              }
-              case TYPES.PLANT: {
-                simulatePlant(i, x, y);
-                break;
-              }
-              case TYPES.ICE: {
-                simulateIce(i, x, y);
-                break;
-              }
-              case TYPES.SAND: {
-                simulateSand(i, x, y);
-                break;
-              }
-              case TYPES.ASH: {
-                simulateAsh(i, x, y);
-                break;
-              }
-              case TYPES.SEED: {
-                simulateSeed(i, x, y);
-                break;
-              }
-              case TYPES.WATER: {
-                simulateWater(i, x, y);
-                break;
-              }
-              case TYPES.OIL: {
-                simulateOil(i, x, y);
-                break;
-              }
-              case TYPES.ACID: {
-                simulateAcid(i, x, y);
-                break;
-              }
-              case TYPES.LAVA: {
-                simulateLava(i, x, y);
-                break;
-              }
-              case TYPES.FIRE: {
-                simulateFire(i, x, y);
-                break;
-              }
-              case TYPES.SMOKE: {
-                simulateSmoke(i, x, y);
-                break;
-              }
-              case TYPES.STEAM: {
-                simulateSteam(i, x, y);
-                break;
-              }
-              default:
-                break;
+              case TYPES.STONE: simulateStone(i); break;
+              case TYPES.METAL: simulateMetal(i, x, y); break;
+              case TYPES.GLASS: simulateGlass(i); break;
+              case TYPES.WOOD: simulateWood(i, x, y); break;
+              case TYPES.PLANT: simulatePlant(i, x, y); break;
+              case TYPES.ICE: simulateIce(i, x, y); break;
+              case TYPES.SAND: simulateSand(i, x, y); break;
+              case TYPES.ASH: simulateAsh(i, x, y); break;
+              case TYPES.SEED: simulateSeed(i, x, y); break;
+              case TYPES.SALT: simulateSalt(i, x, y); break;
+              case TYPES.MUD: simulateMud(i, x, y); break;
+              case TYPES.WATER: simulateWater(i, x, y); break;
+              case TYPES.SALT_WATER: simulateSaltWater(i, x, y); break;
+              case TYPES.OIL: simulateOil(i, x, y); break;
+              case TYPES.ACID: simulateAcid(i, x, y); break;
+              case TYPES.LAVA: simulateLava(i, x, y); break;
+              case TYPES.FIRE: simulateFire(i, x, y); break;
+              case TYPES.SMOKE: simulateSmoke(i, x, y); break;
+              case TYPES.STEAM: simulateSteam(i, x, y); break;
+              case TYPES.TNT: simulateTNT(i, x, y); break;
+              case TYPES.EXPLOSION: simulateExplosion(i, x, y); break;
+              case TYPES.WIRE: simulateWire(i, x, y); break;
+              case TYPES.SPARK: simulateSpark(i, x, y); break;
+              case TYPES.BATTERY: simulateBattery(i, x, y); break;
+              case TYPES.CLONER: simulateCloner(i, x, y); break;
+              default: break;
             }
           }
         }
@@ -2077,11 +2472,9 @@
           case TYPES.OIL:
             color = varyColor('#6f5b98', i + aux[i]);
             break;
-          case TYPES.LAVA: {
-            const base = rand() < 0.55 ? [255, 102 + ((i * 9) % 60), 42] : [255, 182, 72];
-            color = base;
+          case TYPES.LAVA:
+            color = rand() < 0.55 ? [255, 102 + ((i * 9) % 60), 42] : [255, 182, 72];
             break;
-          }
           case TYPES.STEAM:
             color = varyColor('#d5e7ff', i + aux[i]);
             break;
@@ -2093,12 +2486,7 @@
             break;
           case TYPES.METAL: {
             const base = varyColor('#a4b0bf', i);
-            if (temp[i] > 220) {
-              const glow = clamp((temp[i] - 220) / 480, 0, 0.8);
-              color = mixRgb(base, [255, 150, 80], glow);
-            } else {
-              color = base;
-            }
+            color = temp[i] > 220 ? mixRgb(base, [255, 150, 80], clamp((temp[i] - 220) / 480, 0, 0.8)) : base;
             break;
           }
           case TYPES.SEED:
@@ -2106,13 +2494,45 @@
             break;
           case TYPES.GLASS: {
             const base = varyColor('#b6dfff', i);
-            if (temp[i] > 120) color = mixRgb(base, [255, 180, 100], 0.22);
-            else color = base;
+            color = temp[i] > 120 ? mixRgb(base, [255, 180, 100], 0.22) : base;
             break;
           }
           case TYPES.ASH:
             color = varyColor('#b5a08f', i + aux[i]);
             break;
+          case TYPES.SALT:
+            color = varyColor('#eef0dc', i);
+            break;
+          case TYPES.SALT_WATER:
+            color = varyColor('#4d86ff', i + aux[i]);
+            break;
+          case TYPES.MUD:
+            color = varyColor('#8a6a46', i + aux[i]);
+            break;
+          case TYPES.TNT:
+            color = varyColor('#d84b49', i);
+            break;
+          case TYPES.EXPLOSION:
+            color = rand() < 0.5 ? [255, 248, 170] : [255, 186 + ((i * 5) % 60), 60];
+            break;
+          case TYPES.WIRE: {
+            const base = varyColor('#c88956', i);
+            color = aux[i] > 0 ? mixRgb(base, [255, 240, 130], clamp(aux[i] / 8, 0, 0.8)) : base;
+            break;
+          }
+          case TYPES.SPARK:
+            color = rand() < 0.5 ? [255, 245, 155] : [255, 255, 235];
+            break;
+          case TYPES.BATTERY: {
+            const base = varyColor('#7ee18d', i);
+            color = temp[i] > 180 ? mixRgb(base, [255, 170, 90], 0.35) : base;
+            break;
+          }
+          case TYPES.CLONER: {
+            const base = varyColor('#b06bff', i);
+            color = aux[i] > 0 ? mixRgb(base, [255, 255, 255], 0.18) : base;
+            break;
+          }
           default:
             color = [255, 0, 255];
             break;
@@ -2137,6 +2557,7 @@
       for (let x = 12; x < 78; x++) setCell(x, 22, TYPES.SAND);
       for (let x = 84; x < 134; x++) setCell(x, 20, TYPES.WATER);
       for (let x = 120; x < 168; x++) setCell(x, 18, TYPES.OIL);
+      for (let x = 26; x < 52; x++) setCell(x, 18, TYPES.SALT);
       for (let x = 44; x < 186; x++) setCell(x, 98, TYPES.STONE);
       for (let y = 68; y < 98; y++) setCell(64, y, TYPES.METAL);
       for (let y = 58; y < 98; y++) setCell(154, y, TYPES.STONE);
@@ -2144,11 +2565,18 @@
       for (let x = 88; x < 142; x++) setCell(x, 60, TYPES.PLANT);
       for (let x = 88; x < 142; x += 5) setCell(x, 59, TYPES.SEED);
       for (let x = 154; x < 194; x++) setCell(x, 34, TYPES.LAVA, 0, 920);
+      for (let x = 20; x < 34; x++) setCell(x, 92, TYPES.TNT);
+      for (let x = 15; x < 20; x++) setCell(x, 92, TYPES.WIRE);
+      setCell(14, 92, TYPES.BATTERY);
       setCell(74, 75, TYPES.FIRE, 0, 420);
       setCell(168, 60, TYPES.ICE, 0, -50);
       setCell(34, 46, TYPES.ACID);
       setCell(35, 46, TYPES.ACID);
       setCell(36, 46, TYPES.ACID);
+      for (let x = 92; x < 114; x++) setCell(x, 96, TYPES.MUD);
+      for (let x = 178; x < 194; x++) setCell(x, 90, TYPES.SALT_WATER);
+      setCell(198, 96, TYPES.CLONER);
+      setCell(197, 96, TYPES.SAND);
     }
 
     function sceneVolcano() {
@@ -2161,9 +2589,13 @@
         for (let x = 100; x < 120; x++) setCell(x, y, TYPES.LAVA, 0, 980);
       }
       for (let x = 40; x < 90; x++) setCell(x, 28, TYPES.WATER);
+      for (let x = 32; x < 48; x++) setCell(x, 20, TYPES.SALT);
       for (let x = 130; x < 176; x++) setCell(x, 30, TYPES.SAND);
       for (let x = 150; x < 206; x++) setCell(x, 18, TYPES.SEED);
       for (let x = 150; x < 206; x++) setCell(x, 19, TYPES.PLANT);
+      for (let x = 74; x < 88; x++) setCell(x, 90, TYPES.TNT);
+      for (let x = 68; x < 74; x++) setCell(x, 90, TYPES.WIRE);
+      setCell(67, 90, TYPES.BATTERY);
     }
 
     function sceneGarden() {
@@ -2172,17 +2604,19 @@
         setCell(x, 104, TYPES.SAND);
         setCell(x, 105, TYPES.SAND);
       }
-      for (let x = 55; x < 168; x++) {
-        setCell(x, 74, TYPES.WATER);
-      }
+      for (let x = 55; x < 168; x++) setCell(x, 74, TYPES.WATER);
       for (let y = 75; y < 104; y++) {
         setCell(55, y, TYPES.STONE);
         setCell(167, y, TYPES.STONE);
       }
       for (let x = 62; x < 160; x += 6) setCell(x, 73, TYPES.SEED);
+      for (let x = 62; x < 160; x++) if (x % 3 !== 0) setCell(x, 103, TYPES.MUD);
       for (let x = 22; x < 44; x++) setCell(x, 96, TYPES.WOOD);
       for (let x = 176; x < 206; x++) setCell(x, 92, TYPES.ICE, 0, -55);
       for (let x = 178; x < 204; x++) setCell(x, 82, TYPES.WATER);
+      for (let x = 24; x < 36; x++) setCell(x, 88, TYPES.SALT);
+      setCell(190, 103, TYPES.CLONER);
+      setCell(189, 103, TYPES.SEED);
     }
 
     function sceneReactor() {
@@ -2196,9 +2630,12 @@
         setCell(183, y, TYPES.METAL);
       }
       for (let x = 46; x < 174; x++) setCell(x, 88, TYPES.ACID);
-      for (let x = 56; x < 164; x++) setCell(x, 68, TYPES.WATER);
+      for (let x = 56; x < 164; x++) setCell(x, 68, TYPES.SALT_WATER);
       for (let x = 70; x < 150; x++) setCell(x, 57, TYPES.OIL);
       for (let x = 94; x < 126; x++) setCell(x, 40, TYPES.LAVA, 0, 930);
+      for (let x = 58; x < 162; x++) if (x % 2 === 0) setCell(x, 100, TYPES.WIRE);
+      for (let x = 62; x < 158; x += 18) setCell(x, 99, TYPES.BATTERY);
+      for (let x = 92; x < 128; x++) setCell(x, 101, TYPES.TNT);
       setCell(109, 89, TYPES.FIRE, 0, 430);
       setCell(110, 89, TYPES.FIRE, 0, 430);
       for (let x = 48; x < 74; x++) setCell(x, 36, TYPES.ICE, 0, -50);
@@ -2215,11 +2652,16 @@
       for (let x = 28; x < 198; x += 3) setCell(x, 10 + (x % 4), TYPES.STEAM, 0, 150);
       for (let x = 44; x < 192; x += 9) setCell(x, 62, TYPES.WOOD);
       for (let x = 60; x < 190; x += 10) setCell(x, 61, TYPES.PLANT);
-      for (let x = 86; x < 138; x++) setCell(x, 86, TYPES.METAL);
+      for (let x = 70; x < 150; x++) if (x % 2 === 0) setCell(x, 86, TYPES.WIRE);
+      for (let x = 74; x < 146; x += 18) setCell(x, 85, TYPES.BATTERY);
+      for (let x = 80; x < 140; x += 15) setCell(x, 20, TYPES.SPARK, 0, 300);
+      for (let x = 92; x < 116; x++) setCell(x, 92, TYPES.TNT);
       setCell(112, 85, TYPES.FIRE, 0, 440);
       setCell(92, 20, TYPES.ACID);
       setCell(93, 20, TYPES.ACID);
       setCell(94, 20, TYPES.ACID);
+      setCell(176, 114, TYPES.CLONER);
+      setCell(175, 114, TYPES.WATER);
     }
 
     function loadScene(name) {
@@ -2416,6 +2858,5 @@
     requestAnimationFrame(animate);
   
   </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0e92f10ea7293b0',t:'MTc4MTk0MTgzOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
